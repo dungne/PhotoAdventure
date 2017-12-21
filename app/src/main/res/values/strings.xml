@@ -5,8 +5,8 @@
     <string name="title_notifications">Notifications</string>
 
 
-    <!--Main Activity String-->
-    <string name="take_button">take</string>
-    <string name="browse_button">browse</string>
-    <string name="share_button">share</string>
+    <!--Main Activity Strings-->
+    <string name="take_photo_description">taking photo</string>
+    <string name="browse_photo_description">browsing photo</string>
+    <string name="share_photo_description">sharing photo</string>
 </resources>
