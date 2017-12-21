@@ -3,4 +3,10 @@
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
+
+
+    <!--Main Activity String-->
+    <string name="take_button">take</string>
+    <string name="browse_button">browse</string>
+    <string name="share_button">share</string>
 </resources>

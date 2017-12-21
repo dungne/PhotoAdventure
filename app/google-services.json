@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "893118034169",
+    "firebase_url": "https://photoadventure-7c525.firebaseio.com",
+    "project_id": "photoadventure-7c525",
+    "storage_bucket": "photoadventure-7c525.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:893118034169:android:4faf7b7f5e0bfe3b",
+        "android_client_info": {
+          "package_name": "com.photoadventure.photoadventure"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "893118034169-n21asvcfti3onhmu3ph9qlnq6tiqtpie.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.photoadventure.photoadventure",
+            "certificate_hash": "02e708e119d06dc2b728962ac7467358acbb7f63"
+          }
+        },
+        {
+          "client_id": "893118034169-uqprp94qpb590ip026bm9nu6rfg40oqn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh6q4MIjhy_ACXW00gsy4q02jt0xZvQPg"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "893118034169-uqprp94qpb590ip026bm9nu6rfg40oqn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
