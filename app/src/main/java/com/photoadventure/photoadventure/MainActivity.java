@@ -1,6 +1,5 @@
 package com.photoadventure.photoadventure;
 
-import android.*;
 import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -17,15 +16,14 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.TextView;
-
-import com.google.firebase.database.FirebaseDatabase;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
@@ -72,14 +70,24 @@ public class MainActivity extends AppCompatActivity {
                     if (!hasPermission(MainActivity.this, PERMISSIONS)) {
                         ActivityCompat.requestPermissions(MainActivity.this, PERMISSIONS, REQUEST_CAMERA_PERMISSION);
                     } else {
-                        takePhotoIntent();
+                        Log.d(TAG, "get in onClick");
+                        dispathTakePhotoIntent();
                     }
                 } else {
-                    takePhotoIntent();
+                    dispathTakePhotoIntent();
                 }
             }
         });
 
+        // Browse photo
+        mBrowsePhotoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent folderIntent = new Intent(MainActivity.this, FolderActivity.class);
+//                folderIntent.putExtra()
+                startActivity(folderIntent);
+            }
+        });
 
         BottomNavigationView navigation = findViewById(R.id.bottom_navigation);
         navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
@@ -92,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                takePhotoIntent();
+                dispathTakePhotoIntent();
             }
         }
     }
@@ -108,29 +116,34 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    private void takePhotoIntent() {
+    private void dispathTakePhotoIntent() {
         Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        //Ensure that there's a camera activity to handle the intent
         if (takePhotoIntent.resolveActivity(getPackageManager()) != null) {
+            Log.d(TAG, "inside dispath");
             //TODO: Save full-size photo
-//            // Create the File where the photo should be stored
-//            File photoFile = null;
-//            try {
-//                photoFile = createPhotoFile();
-//            } catch (IOException ex) {
-//
-//            }
-//
-//            // Continue only if the File was successfully created
-//            if (photoFile != null) {
-////                Uri photoURI = FileProvider.getUriForFile(this,
-////                                                        "com.example.android.fileprovider",
-////                                                                 photoFile);
-//                mPhotoUri = Uri.fromFile(photoFile);
-//                takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, mPhotoUri);
+            // Create the File where the photo should be stored
+            File photoFile = null;
+            try {
+                photoFile = createPhotoFile();
+            } catch (IOException ex) {
+                Toast.makeText(MainActivity.this, "Could not create a file to store image", Toast.LENGTH_SHORT).show();
+            }
+
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                Uri photoUri = FileProvider.getUriForFile(this,
+                        "com.example.android.fileprovider",
+                        photoFile);
+
+                takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
                 startActivityForResult(takePhotoIntent, REQUEST_IMAGE_CAPTURE);
-//            }
+            }
+        } else {
+            Toast.makeText(this, "Could not open Camera", Toast.LENGTH_SHORT).show();
         }
     }
+
 
     private File createPhotoFile() throws IOException {
         // Create an image file name
@@ -153,27 +166,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
-            mImageView.setImageBitmap(imageBitmap);
+            //Get full-size image
+            File imageFile = new File(mCurrentPhotoPath);
+            if (imageFile.exists()) {
+                Bitmap myBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                mImageView.setImageBitmap(myBitmap);
+            }
 
-//            this.grabImage(mImageView);
         }
     }
 
-    // Grab full size image after the camera intent finished
-    public void grabImage(ImageView imageView) {
-        this.getContentResolver().notifyChange(mPhotoUri, null);
-        ContentResolver cr = this.getContentResolver();
-        Bitmap bitmap;
-        try {
-            bitmap = android.provider.MediaStore.Images.Media.getBitmap(cr, mPhotoUri);
-            imageView.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            Log.d(TAG, "Failed to load", e);
-        }
-
-    }
 
     // Bottom Navigation
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
