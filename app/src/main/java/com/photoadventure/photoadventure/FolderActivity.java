@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,10 +25,21 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +51,8 @@ import static com.photoadventure.photoadventure.MainActivity.REQUEST_IMAGE_CAPTU
 public class FolderActivity extends AppCompatActivity {
 
     private static final String TAG = "FolderActivity";
+    private static final String AUTHORITY = "com.example.android.fileprovider";
+    private static final String PHOTOSPATH = "Android/data/com.photoadventure.photoadventure/files/Pictures";
 
     // Views
     private RecyclerView mPhotoRecyclerView;
@@ -47,10 +61,15 @@ public class FolderActivity extends AppCompatActivity {
 
     // Firebase
     FirebaseStorage mStorage = FirebaseStorage.getInstance();
+    StorageReference mPhotosStorageRef = mStorage.getReference("Photos/");
+    FirebaseDatabase mDatabase = FirebaseDatabase.getInstance();
+    DatabaseReference mPhotosDatabaseRef = mDatabase.getReference("Photos");
 
     // Properties
-    private List<Bitmap> mPhotoList;
-    private String mCurrentPhotoPath;
+    private List<Bitmap> mPhotoList = new ArrayList<>();
+    private String mCurrentPhotoPath = "";
+    private List<Bitmap> mPhotosOnPhone = new ArrayList<>();
+    private List<Bitmap> mPhotosOnDatabase = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) throws Error {
@@ -78,76 +97,158 @@ public class FolderActivity extends AppCompatActivity {
         });
 
 
-
         // RecyclerView init
         mPhotoRecyclerView = findViewById(R.id.photo_recyclerView);
-//        mPhotoRecyclerView.setHasFixedSize(true);
+        mPhotoRecyclerView.setHasFixedSize(true);
         StaggeredGridLayoutManager layoutManager = new StaggeredGridLayoutManager(3, 1);
         mPhotoRecyclerView.setLayoutManager(layoutManager);
 
-        mPhotoAdapter = new PhotoAdapter(loadPhotos());
 
-        mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+        // Load photo from Firebase Storage
+        //TODO: Do we need to delete photo on phone after it is uploaded to database?
+        mPhotosOnPhone = loadPhotosOnPhone();
+        mPhotoList = mPhotosOnPhone;
+
+        //TODO: Bug: just load image have on phone
+        mPhotosDatabaseRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+
+                List<Bitmap> photoBitmapList = new ArrayList<>();
+
+                // Get all photo information on Real-time database
+                List<Photo> tempPhotoList = new ArrayList<>();
+                for (DataSnapshot photoData : dataSnapshot.getChildren()) {
+                    Photo photo = photoData.getValue(Photo.class);
+                    Log.d(TAG, "photo in for loop: " + photo.getName());
+                    tempPhotoList.add(photo);
+                }
+
+                Log.d(TAG, "tempPhotoList: " + tempPhotoList.toString());
+
+                // Download the photo from photos' information URL
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = 8;
+
+                for (Photo photo : tempPhotoList) {
+                    Log.d(TAG, "Photo: " + photo.getName());
+                    Log.d(TAG, "photo URL: " + photo.getURLString());
+
+                    Uri photoUri = Uri.parse(photo.getURLString());
+
+                    // Load image from Uri, and put it into bitmap mPhotoList
+                    Picasso.with(FolderActivity.this).load(photoUri).into(new Target() {
+                        @Override
+                        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+//                            mPhotoList.add(bitmap);
+                            
+                        }
+
+                        @Override
+                        public void onBitmapFailed(Drawable errorDrawable) {
+
+                        }
+
+                        @Override
+                        public void onPrepareLoad(Drawable placeHolderDrawable) {
+
+                        }
+                    });
 
 
-        // Load photo in folder
-//        mPhotoList = new ArrayList<>();
+                }
+
+                // Update photo in Recycler View
+//                if (mPhotoAdapter != null) {
+                    mPhotoAdapter.notifyDataSetChanged();
+//                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
+        Log.d(TAG, "Photo List onCreate: " + mPhotoList.toString());
 
 
-
-//
-//        File photosPath = new File(Environment.getExternalStorageDirectory(), "Android/data/com.photoadventure.photoadventure/files/Pictures");
-//        if (photosPath.exists()) {
-//            String[] photoNames = photosPath.list();
-//            for (int i = 0; i < photoNames.length; i++) {
-//                Bitmap bitmap = BitmapFactory.decodeFile(photosPath.getPath() + "/" + photoNames[i]);
-//                mPhotoList.add(bitmap);
-//            }
-//        }
-//
-//        Log.d(TAG, "mPhotoList: " + mPhotoList.toString());
-//
-//        PhotoAdapter photoAdapter = new PhotoAdapter(mPhotoList);
-//        mPhotoRecyclerView.setAdapter(photoAdapter);
-
-
+        // Set up Recycler View with adapter
+//        mPhotoAdapter = new PhotoAdapter(mPhotoList);
+//        mPhotoRecyclerView.setAdapter(mPhotoAdapter);
 
     }
 
-    public ArrayList<Bitmap> loadPhotos() {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Set up Recycler View with adapter
+//        Log.d(TAG, "Photo List: " + mPhotoList.toString());
+//        mPhotoAdapter = new PhotoAdapter(mPhotoList);
+//        mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+    }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        // Upload a new photo to server when capturing successfully
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            final File photo = new File(mCurrentPhotoPath);
+            // Get new photo successfully
+            if (photo.exists()) {
+                // Get storage reference
+                String path = "Photos/" + photo.getName();
+                StorageReference storageRef = mStorage.getReference(path);
+
+                // Create Uri to upload the photo
+                Uri photoUri = FileProvider.getUriForFile(this, AUTHORITY, photo);
+                UploadTask uploadTask = storageRef.putFile(photoUri);
+                uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                    @Override
+                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                        Toast.makeText(FolderActivity.this, "Upload photo successfully", Toast.LENGTH_SHORT).show();
+                        Uri downloadUrl = taskSnapshot.getDownloadUrl();
+
+                        // Add photo information to Real-time database
+                        if (downloadUrl != null) {
+                            String photoName = photo.getName();
+                            Photo newPhoto = new Photo(photoName, downloadUrl.toString());
+
+                            String reducedPhotoName = photoName.substring(0, photoName.indexOf(".")); //Remove .jpg from photo name, because database name cannot have "." character
+                            mPhotosDatabaseRef.child(reducedPhotoName).setValue(newPhoto);
+                        }
+
+
+                    }
+                });
+            }
+        }
+    }
+
+    // Return an ArrayList of photo on phone's storage
+    public ArrayList<Bitmap> loadPhotosOnPhone() {
         ArrayList<Bitmap> photoList = new ArrayList<>();
-//        photoList.clear();
 
-        File photosPath = new File(Environment.getExternalStorageDirectory(), "Android/data/com.photoadventure.photoadventure/files/Pictures");
+        File photosPath = new File(Environment.getExternalStorageDirectory(), PHOTOSPATH);
         if (photosPath.exists()) {
             String[] photoNames = photosPath.list();
 
             BitmapFactory.Options options = new BitmapFactory.Options();
-//            options.inJustDecodeBounds = true;
             options.inSampleSize = 8;
-
             Bitmap bitmap;
 
             for (int i = 0; i < photoNames.length; i++) {
                 bitmap = BitmapFactory.decodeFile(photosPath.getPath() + "/" + photoNames[i], options);
                 if (bitmap != null) {
-//                    Log.d(TAG, "bitmap: " + bitmap.toString());
                 }
                 photoList.add(bitmap);
-//                bitmap.recycle();
-
             }
-
-//            Log.d(TAG, "mPhotoList: " + photoList.toString());
-
-
-//            photoAdapter = new PhotoAdapter(photoList);
-//            recyclerView.setAdapter(photoAdapter);
         }
         return photoList;
     }
 
+    // Handle Request Permission result
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -158,6 +259,8 @@ public class FolderActivity extends AppCompatActivity {
         }
     }
 
+
+    // Check Permission of current phone
     private boolean hasPermission(Context context, String[] permissions) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && context != null && permissions != null) {
             for (String permission : permissions) {
@@ -169,8 +272,10 @@ public class FolderActivity extends AppCompatActivity {
         return true;
     }
 
+    // Create a new photo file, and start camera activity
     private void dispathTakePhotoIntent() {
         Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
         //Ensure that there's a camera activity to handle the intent
         if (takePhotoIntent.resolveActivity(getPackageManager()) != null) {
             Log.d(TAG, "inside dispath");
@@ -186,7 +291,7 @@ public class FolderActivity extends AppCompatActivity {
             // Continue only if the File was successfully created
             if (photoFile != null) {
                 Uri photoUri = FileProvider.getUriForFile(this,
-                        "com.example.android.fileprovider",
+                        AUTHORITY,
                         photoFile);
 
                 takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
@@ -216,57 +321,10 @@ public class FolderActivity extends AppCompatActivity {
 
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            //Get full-size image
-//            File imageFile = new File(mCurrentPhotoPath);
-//            if (imageFile.exists()) {
-//                Bitmap myBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
-//                mImageView.setImageBitmap(myBitmap);
-//                mImageView.setRotation(20);
-//            }
-
-//            mPhotoAdapter = new PhotoAdapter(loadPhotos()); // Update with the new photo
-//            mPhotoAdapter.notifyDataSetChanged(); // Reload photos
-
-//            mPhotoRecyclerView.invalidate();
-
-
-
-//            Uri photoUri = data.getParcelableExtra(MediaStore.EXTRA_OUTPUT);
-//            Log.d(TAG, photoUri.toString() + "" );
-//
-//            String path = "Photos/" + UUID.randomUUID() + ".jpg";
-//
-//            StorageReference storageRef = mStorage.getReference(path);
-//
-//            storageRef.putFile(photoUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-//                @Override
-//                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-//                    Uri downloadUri = taskSnapshot.getDownloadUrl();
-//                    Log.d(TAG, "" + downloadUri.toString());
-//                    Toast.makeText(FolderActivity.this, "Upload photo successfully", Toast.LENGTH_SHORT).show();
-//                }
-//            });
-
-
-
-        }
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
 
-        mPhotoAdapter = new PhotoAdapter(loadPhotos()); // Update with the new photo
-//            mPhotoAdapter.notifyDataSetChanged(); // Reload photos
 
-            mPhotoRecyclerView.invalidate();
-
-        ArrayList<Bitmap> photoList = loadPhotos();
-        Bitmap photo = photoList.get(photoList.size() - 1);
-        Log.d(TAG, "photo: " + photo.toString());
     }
 
     public class PhotoViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -303,7 +361,7 @@ public class FolderActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(PhotoViewHolder holder, int position) {
             //TODO: Bug: init list of photo as bitmap
-            holder.photoImageView.setImageBitmap((Bitmap)mPhotoList.get(position));
+            holder.photoImageView.setImageBitmap((Bitmap) mPhotoList.get(position));
         }
 
         @Override
