@@ -23,6 +23,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.firebase.storage.FirebaseStorage;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -41,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton mSharePhotoButton;
 
     private ImageView mImageView;
+
+    // Firebase
+    FirebaseStorage mStorage = FirebaseStorage.getInstance();
 
     // Properties
     private String mCurrentPhotoPath;

@@ -24,6 +24,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.google.firebase.storage.FirebaseStorage;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -42,6 +44,9 @@ public class FolderActivity extends AppCompatActivity {
     private RecyclerView mPhotoRecyclerView;
     private FloatingActionButton mTakePhotoButton;
     private PhotoAdapter mPhotoAdapter;
+
+    // Firebase
+    FirebaseStorage mStorage = FirebaseStorage.getInstance();
 
     // Properties
     private List<Bitmap> mPhotoList;
@@ -227,16 +232,41 @@ public class FolderActivity extends AppCompatActivity {
 
 //            mPhotoRecyclerView.invalidate();
 
+
+
+//            Uri photoUri = data.getParcelableExtra(MediaStore.EXTRA_OUTPUT);
+//            Log.d(TAG, photoUri.toString() + "" );
+//
+//            String path = "Photos/" + UUID.randomUUID() + ".jpg";
+//
+//            StorageReference storageRef = mStorage.getReference(path);
+//
+//            storageRef.putFile(photoUri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+//                @Override
+//                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+//                    Uri downloadUri = taskSnapshot.getDownloadUrl();
+//                    Log.d(TAG, "" + downloadUri.toString());
+//                    Toast.makeText(FolderActivity.this, "Upload photo successfully", Toast.LENGTH_SHORT).show();
+//                }
+//            });
+
+
+
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+
         mPhotoAdapter = new PhotoAdapter(loadPhotos()); // Update with the new photo
 //            mPhotoAdapter.notifyDataSetChanged(); // Reload photos
 
             mPhotoRecyclerView.invalidate();
+
+        ArrayList<Bitmap> photoList = loadPhotos();
+        Bitmap photo = photoList.get(photoList.size() - 1);
+        Log.d(TAG, "photo: " + photo.toString());
     }
 
     public class PhotoViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
