@@ -1,7 +1,6 @@
 package com.photoadventure.photoadventure;
 
 import android.Manifest;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -16,7 +15,6 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
-import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
@@ -171,6 +169,7 @@ public class MainActivity extends AppCompatActivity {
             if (imageFile.exists()) {
                 Bitmap myBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
                 mImageView.setImageBitmap(myBitmap);
+                mImageView.setRotation(20);
             }
 
         }
