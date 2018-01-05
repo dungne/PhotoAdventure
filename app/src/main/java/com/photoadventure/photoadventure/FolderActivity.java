@@ -5,8 +5,9 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -35,11 +36,9 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
 import com.squareup.picasso.Picasso;
-import com.squareup.picasso.Target;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -58,6 +57,7 @@ public class FolderActivity extends AppCompatActivity {
     private RecyclerView mPhotoRecyclerView;
     private FloatingActionButton mTakePhotoButton;
     private PhotoAdapter mPhotoAdapter;
+    private ImageView mImageView;
 
     // Firebase
     FirebaseStorage mStorage = FirebaseStorage.getInstance();
@@ -66,7 +66,8 @@ public class FolderActivity extends AppCompatActivity {
     DatabaseReference mPhotosDatabaseRef = mDatabase.getReference("Photos");
 
     // Properties
-    private List<Bitmap> mPhotoList = new ArrayList<>();
+    private List<Bitmap> mPhotoListBitmap = new ArrayList<>();
+    private ArrayList<Photo> mPhotoList = new ArrayList<>();
     private String mCurrentPhotoPath = "";
     private List<Bitmap> mPhotosOnPhone = new ArrayList<>();
     private List<Bitmap> mPhotosOnDatabase = new ArrayList<>();
@@ -75,6 +76,9 @@ public class FolderActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) throws Error {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_folder);
+
+        mImageView = findViewById(R.id.imageView2);
+        Log.d(TAG, "before Picasso" + mImageView.toString());
 
 
         // Take Photo Button init
@@ -106,62 +110,30 @@ public class FolderActivity extends AppCompatActivity {
 
         // Load photo from Firebase Storage
         //TODO: Do we need to delete photo on phone after it is uploaded to database?
-        mPhotosOnPhone = loadPhotosOnPhone();
-        mPhotoList = mPhotosOnPhone;
+//        mPhotosOnPhone = loadPhotosOnPhone();
+//        mPhotoListBitmap = mPhotosOnPhone;
 
         //TODO: Bug: just load image have on phone
+
+        // Get and return all photo's information on Real-time database
         mPhotosDatabaseRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
-                List<Bitmap> photoBitmapList = new ArrayList<>();
-
                 // Get all photo information on Real-time database
-                List<Photo> tempPhotoList = new ArrayList<>();
+                ArrayList<Photo> tempPhotoList = new ArrayList<>();
                 for (DataSnapshot photoData : dataSnapshot.getChildren()) {
                     Photo photo = photoData.getValue(Photo.class);
                     Log.d(TAG, "photo in for loop: " + photo.getName());
                     tempPhotoList.add(photo);
                 }
-
                 Log.d(TAG, "tempPhotoList: " + tempPhotoList.toString());
+                mPhotoList = tempPhotoList;
 
-                // Download the photo from photos' information URL
-                BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = 8;
-
-                for (Photo photo : tempPhotoList) {
-                    Log.d(TAG, "Photo: " + photo.getName());
-                    Log.d(TAG, "photo URL: " + photo.getURLString());
-
-                    Uri photoUri = Uri.parse(photo.getURLString());
-
-                    // Load image from Uri, and put it into bitmap mPhotoList
-                    Picasso.with(FolderActivity.this).load(photoUri).into(new Target() {
-                        @Override
-                        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-//                            mPhotoList.add(bitmap);
-                            
-                        }
-
-                        @Override
-                        public void onBitmapFailed(Drawable errorDrawable) {
-
-                        }
-
-                        @Override
-                        public void onPrepareLoad(Drawable placeHolderDrawable) {
-
-                        }
-                    });
-
-
-                }
-
-                // Update photo in Recycler View
-//                if (mPhotoAdapter != null) {
+                // update UI when a new photo is added
+                if (mPhotoAdapter != null) {
                     mPhotoAdapter.notifyDataSetChanged();
-//                }
+                }
             }
 
             @Override
@@ -170,21 +142,63 @@ public class FolderActivity extends AppCompatActivity {
             }
         });
 
-        Log.d(TAG, "Photo List onCreate: " + mPhotoList.toString());
+        Log.d(TAG, "Photo List onCreate: " + mPhotoListBitmap.toString());
 
 
-        // Set up Recycler View with adapter
-//        mPhotoAdapter = new PhotoAdapter(mPhotoList);
-//        mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+        new UpdatePhotoOnStorage().execute(mPhotoList);
 
+    }
+
+    // CLASSES
+    private class UpdatePhotoOnStorage extends AsyncTask<ArrayList<Photo>, Void, Void> {
+        @Override
+        protected Void doInBackground(ArrayList<Photo>[] arrayLists) {
+            ArrayList<Photo> photosList = arrayLists[0];
+            for (Photo photo : photosList) {
+
+                Uri photoUri = Uri.parse(photo.getURLString());
+
+                // Create a bitmap of a photo
+                Bitmap bitmap = null;
+                try {
+                    bitmap = Picasso.with(FolderActivity.this)
+                            .load(photoUri)
+                            .get();
+                    bitmap = Bitmap.createScaledBitmap(bitmap, 100, 100, false);
+                    Log.d(TAG, "On AsyncTask, Bitmap: " + bitmap.toString());
+
+                } catch(IOException e) {
+                    e.printStackTrace();
+                }
+
+                // Add the bitmap to the mPhotoListBitmap
+                mPhotoListBitmap.add(bitmap);
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            // Set up Recycler View with adapter after adding all photo bitmap on database complete
+            mPhotoAdapter = new PhotoAdapter(mPhotoListBitmap);
+            mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        new UpdatePhotoOnStorage().execute(mPhotoList);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         // Set up Recycler View with adapter
-//        Log.d(TAG, "Photo List: " + mPhotoList.toString());
-//        mPhotoAdapter = new PhotoAdapter(mPhotoList);
+//        Log.d(TAG, "Photo List: " + mPhotoListBitmap.toString());
+//        mPhotoAdapter = new PhotoAdapter(mPhotoListBitmap);
 //        mPhotoRecyclerView.setAdapter(mPhotoAdapter);
     }
 
@@ -225,6 +239,7 @@ public class FolderActivity extends AppCompatActivity {
             }
         }
     }
+
 
     // Return an ArrayList of photo on phone's storage
     public ArrayList<Bitmap> loadPhotosOnPhone() {
@@ -302,7 +317,6 @@ public class FolderActivity extends AppCompatActivity {
         }
     }
 
-
     private File createPhotoFile() throws IOException {
         // Create an image file name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -319,13 +333,6 @@ public class FolderActivity extends AppCompatActivity {
         return image;
     }
 
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-
-    }
 
     public class PhotoViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
 
@@ -346,7 +353,7 @@ public class FolderActivity extends AppCompatActivity {
 
     public class PhotoAdapter extends RecyclerView.Adapter<PhotoViewHolder> {
 
-        private List<Object> mPhotoList;
+        private List<Bitmap> mPhotoList;
 
         public PhotoAdapter(List photoList) {
             mPhotoList = photoList;
@@ -361,7 +368,7 @@ public class FolderActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(PhotoViewHolder holder, int position) {
             //TODO: Bug: init list of photo as bitmap
-            holder.photoImageView.setImageBitmap((Bitmap) mPhotoList.get(position));
+            holder.photoImageView.setImageBitmap(mPhotoList.get(position));
         }
 
         @Override
