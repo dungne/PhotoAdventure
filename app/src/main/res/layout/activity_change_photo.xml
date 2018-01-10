@@ -14,6 +14,7 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginTop="50dp"
+        android:scaleType="centerCrop"
         android:src="@drawable/set_image"/>
 
     <Button

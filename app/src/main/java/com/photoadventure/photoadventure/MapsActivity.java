@@ -10,6 +10,8 @@ import android.graphics.Canvas;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -26,6 +28,11 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -34,6 +41,9 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -51,8 +61,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
 
-    FloatingActionButton button;
-
     private GPS gps;
     private Location mLocation;
     double lat, lon;
@@ -61,6 +69,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private FirebaseDatabase database;
     private DatabaseReference databaseReference;
+    private ChildEventListener childEventListener;
     private StorageReference storageReference;
 
     @Override
@@ -76,6 +85,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mLocation = gps.getLocation();
         lat = mLocation.getLatitude();
         lon = mLocation.getLongitude();
+        customMarker = new LatLng(lat, lon);
+
         Geocoder geocoder = new Geocoder(this, Locale.getDefault());
         List<Address> addressList = null;
         try{
@@ -90,6 +101,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
+
 
     public void onClick(View view) {
         showInputBox();
@@ -111,62 +123,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 return false;
             }
         });
-        customMarker = new LatLng(lat, lon);
-//        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-//        builder.include(customMarker); //Taking Point A (First LatLng)
-//        LatLngBounds bounds = builder.build();
-//        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 200);
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(customMarker, 14));
-//        mMap.animateCamera(CameraUpdateFactory.zoomTo(14), 2000, null);
-        String simpleUri = "https://www.simplifiedcoding.net/wp-content/uploads/2015/10/advertise.png";
-        createMarker(simpleUri);
-//        Bitmap loadedBitmap = createMarker(simpleUri);
-//        ImageView dummyImage = findViewById(R.id.dummyImage);
-//        dummyImage.setImageBitmap(loadedBitmap);
-//        Picasso.with(getApplicationContext()).load(simpleUri).fit().centerCrop().into(dummyImage);
 
-//        mMap.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-//            @Override
-//            public void onMapLoaded() {
-//                final LatLng customMarkerLocationOne = new LatLng(lat, lon);
-//
-//                storageReference.child("marker_photo").child("mPhoto").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-//                    @Override
-//                    public void onSuccess(Uri uri) {
-//                        mMap.addMarker(new MarkerOptions()
-//                                .position(customMarkerLocationOne)
-//                                .title("me")
-//                                .icon(BitmapDescriptorFactory
-//                                        .fromBitmap(createMarker(MapsActivity.this, uri))));
-//
-//                        //LatLngBound will cover all your marker on Google Maps
-//                        LatLngBounds.Builder builder = new LatLngBounds.Builder();
-//                        builder.include(customMarkerLocationOne); //Taking Point A (First LatLng)
-//                        LatLngBounds bounds = builder.build();
-//                        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 200);
-//                        mMap.moveCamera(cu);
-//                        mMap.animateCamera(CameraUpdateFactory.zoomTo(14), 2000, null);
-//                    }
-//                });
-//            }
-//        });
-//        mMap.setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-//            @Override
-//            public void onMapLoaded() {
-//                customMarker = new LatLng(lat, lon);
-//                storageReference.child("marker_photo").child("mPhoto").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-//                    @Override
-//                    public void onSuccess(Uri uri) {
-//                        Log.d("abc", "onSuccess: " + uri);
-////                        mMap.addMarker(new MarkerOptions().position(customMarker).title("me")
-////                                .icon(BitmapDescriptorFactory.fromBitmap()));
-//
-//                    }
-//                });
-//                 //LatLngBound will cover all your marker on Google Maps
-//
-//            }
-//        });
+        storageReference.child("marker_photo").child("mPhoto").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                String s = uri.toString();
+                Log.i("asd", s);
+                createMarker(s);
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(customMarker, 14));
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                String s = "https://d30y9cdsu7xlg0.cloudfront.net/png/213810-200.png";
+                createMarker(s);
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(customMarker, 14));
+            }
+        });
 
         databaseReference.child("location").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -202,6 +175,48 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onCancelled(DatabaseError databaseError) {}
         });
+
+        childEventListener = new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                LocationStore addedLocation = dataSnapshot.getValue(LocationStore.class);
+                double latitude = addedLocation.getLatitude();
+                double longitude = addedLocation.getLongitude();
+                String feature = addedLocation.getFeature();
+                LatLng latLng = new LatLng(latitude, longitude);
+                switch (feature) {
+                    case "home":
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()).icon(BitmapDescriptorFactory.fromResource(R.drawable.home)));
+                        break;
+                    case "work":
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()).icon(BitmapDescriptorFactory.fromResource(R.drawable.work)));
+                        break;
+                    case "restaurant":
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()).icon(BitmapDescriptorFactory.fromResource(R.drawable.restaurant)));
+                        break;
+                    case "cafe":
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()).icon(BitmapDescriptorFactory.fromResource(R.drawable.cafe)));
+                        break;
+                    case "shopping":
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()).icon(BitmapDescriptorFactory.fromResource(R.drawable.shopping)));
+                        break;
+                    default:
+                        mMap.addMarker(new MarkerOptions().position(latLng).title(addedLocation.getName()));
+                        break;
+                }
+            }
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {}
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+                LocationStore deletedLocation = dataSnapshot.getValue(LocationStore.class);
+            }
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        };
+        databaseReference.child("location").addChildEventListener(childEventListener);
     }
 
     private void showInputBox() {
@@ -307,102 +322,35 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         dialog.show();
     }
 
-//    public static Bitmap createCustomMarker(Context context, @DrawableRes int resource) {
-//
-//        View marker = ((LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE))
-//                .inflate(R.layout.custom_marker, null);
-//
-//        CircleImageView markerImage = (CircleImageView) marker.findViewById(R.id.user_dp);
-//        markerImage.setImageResource(resource);
-//
-//        DisplayMetrics displayMetrics = new DisplayMetrics();
-//        ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-//        marker.setLayoutParams(new ViewGroup.LayoutParams(52, ViewGroup.LayoutParams.WRAP_CONTENT));
-//        marker.measure(displayMetrics.widthPixels, displayMetrics.heightPixels);
-//        marker.layout(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels);
-//        marker.buildDrawingCache();
-//        Bitmap bitmap = Bitmap.createBitmap(marker.getMeasuredWidth(), marker.getMeasuredHeight(),
-//                Bitmap.Config.ARGB_8888);
-//        Canvas canvas = new Canvas(bitmap);
-//        marker.draw(canvas);
-//
-//        return bitmap;
-//    }
-
     public void createMarker(String uri) {
         Context context = getApplicationContext();
         LayoutInflater mInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         final RelativeLayout view = new RelativeLayout(context);
         mInflater.inflate(R.layout.custom_marker, view, true);
-        ImageView markerImage = (ImageView) view.findViewById(R.id.user_dp);
-        markerImage.setImageResource(R.drawable.cafe);
-//        Callback callback = new Callback() {
-//            @Override
-//            public void onSuccess() {
-        view.setLayoutParams(new ViewGroup.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,
-                RelativeLayout.LayoutParams.WRAP_CONTENT));
-        view.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
-        Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(),
-                view.getMeasuredHeight(),
-                Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(bitmap);
-        view.draw(c);
-        Log.d("abc", "createMarker: " + bitmap);
-        mMap.addMarker(new MarkerOptions().position(customMarker).title("me")
-                .icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
-//
-//            }
-//
-//            @Override
-//            public void onError() {
-//                Log.d("abc", "onError: " + "asldfjalskdfj");
-//            }
-//        };
-//        Log.d("abc", "createMarker: ");
-//        Picasso.with(context).load(uri).fit().centerCrop().into(markerImage, callback);
+        final ImageView markerImage = (ImageView) view.findViewById(R.id.user_dp);
+        Glide
+                .with(context)
+                .load(uri)
+                .centerCrop()
+                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+                .into(new SimpleTarget<GlideDrawable>() {
+                    @Override
+                    public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
+                        markerImage.setImageDrawable(resource);
+                        view.setLayoutParams(new ViewGroup.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,
+                                RelativeLayout.LayoutParams.WRAP_CONTENT));
+                        view.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+                        Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(),
+                                view.getMeasuredHeight(),
+                                Bitmap.Config.ARGB_8888);
+                        Canvas c = new Canvas(bitmap);
+                        view.draw(c);
 
-//        View marker = ((LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE))
-//                .inflate(R.layout.custom_marker, null);
-//        ImageView markerImage = (ImageView) marker.findViewById(R.id.user_dp);
-//        Picasso.with(context).load(uri).fit().centerCrop().into(markerImage);
-
-//        DisplayMetrics displayMetrics = new DisplayMetrics();
-//        ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-//        view.setLayoutParams(new ViewGroup.LayoutParams(52, ViewGroup.LayoutParams.WRAP_CONTENT));
-//        view.measure(displayMetrics.widthPixels, displayMetrics.heightPixels);
-//        view.layout(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels);
-//        view.buildDrawingCache();
-//        Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(), view.getMeasuredHeight(),
-//                Bitmap.Config.ARGB_8888);
-//        Canvas canvas = new Canvas(bitmap);
-//        view.draw(canvas);
-
-
+                        mMap.addMarker(new MarkerOptions().position(customMarker).title("me")
+                                .icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+                    }
+                });
     }
-
-//    public Bitmap createBitmap(final Context context){
-//        final View marker = ((LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE)).inflate(R.layout.custom_marker, null);
-//        storageReference.child("marker_photo").child("mPhoto").getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-//            @Override
-//            public void onSuccess(Uri uri) {
-//                ImageView markerImage = (ImageView) marker.findViewById(R.id.user_dp);
-//                Picasso.with(context).load(uri).fit().centerCrop().into(markerImage);
-//
-//                DisplayMetrics displayMetrics = new DisplayMetrics();
-//                ((Activity) context).getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-//                marker.setLayoutParams(new ViewGroup.LayoutParams(52, ViewGroup.LayoutParams.WRAP_CONTENT));
-//                marker.measure(displayMetrics.widthPixels, displayMetrics.heightPixels);
-//                marker.layout(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels);
-//                marker.buildDrawingCache();
-//                Bitmap bitmap = Bitmap.createBitmap(marker.getMeasuredWidth(), marker.getMeasuredHeight(),
-//                        Bitmap.Config.ARGB_8888);
-//                Canvas canvas = new Canvas(bitmap);
-//                marker.draw(canvas);
-//            }
-//        });
-//
-//        return bitmap;
-//    }
 }
