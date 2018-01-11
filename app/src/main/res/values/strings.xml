@@ -9,4 +9,14 @@
     <string name="take_photo_description">taking photo</string>
     <string name="browse_photo_description">browsing photo</string>
     <string name="share_photo_description">sharing photo</string>
+    <string name="title_activity_maps">Map</string>
+
+    <string-array name="featureList">
+        <item>home</item>
+        <item>work</item>
+        <item>restaurant</item>
+        <item>cafe</item>
+        <item>shopping</item>
+        <item>other</item>
+    </string-array>
 </resources>
