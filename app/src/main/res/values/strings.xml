@@ -19,4 +19,5 @@
         <item>shopping</item>
         <item>other</item>
     </string-array>
+    <string name="title_activity_maps2">Map</string>
 </resources>

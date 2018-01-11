@@ -1,4 +1,4 @@
-package com.photoadventure.photoadventure;
+package com.photoadventure.photoadventure.Model;
 
 import android.*;
 import android.app.Service;

@@ -1,5 +1,7 @@
 package com.photoadventure.photoadventure;
 
+import android.*;
+import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
@@ -7,16 +9,21 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
+import android.support.annotation.Nullable;
+import android.support.design.widget.BottomNavigationView;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -30,9 +37,11 @@ import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.load.resource.drawable.GlideDrawable;
-import com.bumptech.glide.request.animation.GlideAnimation;
+//import com.bumptech.glide.load.resource.drawable.GlideDrawable;
+import com.bumptech.glide.request.RequestOptions;
+//import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -52,12 +61,16 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.photoadventure.photoadventure.Model.GPS;
+import com.photoadventure.photoadventure.Model.LocationStore;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+
+    static final String TAG = "MapsActivity";
 
     private GoogleMap mMap;
 
@@ -76,6 +89,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
+        Log.d(TAG, "onCreate Map");
+
+
+        if (Build.VERSION.SDK_INT >= 23) {
+            String[] PERMISSION = {Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.INTERNET,
+                    Manifest.permission.ACCESS_NETWORK_STATE,
+                    Manifest.permission.ACCESS_WIFI_STATE};
+            ActivityCompat.requestPermissions(MapsActivity.this, PERMISSION, 1);
+        }
 
         database = FirebaseDatabase.getInstance();
         databaseReference = database.getReference();
@@ -100,6 +124,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        //Navigation bottom
+        BottomNavigationView navigationView = findViewById(R.id.bottom_navigation);
+        navigationView.setSelectedItemId(R.id.navigation_map);
+        navigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                switch (item.getItemId()) {
+                    case R.id.navigation_home:
+                        Intent intent1 = new Intent(MapsActivity.this, FolderActivity.class);
+                        startActivity(intent1);
+                        break;
+                    case R.id.navigation_map:
+
+                        break;
+                }
+                return false;
+            }
+        });
     }
 
 
@@ -328,14 +371,41 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         final RelativeLayout view = new RelativeLayout(context);
         mInflater.inflate(R.layout.custom_marker, view, true);
         final ImageView markerImage = (ImageView) view.findViewById(R.id.user_dp);
+
+//        Glide
+//                .with(context)
+//                .load(uri)
+//                .centerCrop()
+//                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
+//                .into(new SimpleTarget<GlideDrawable>() {
+//                    @Override
+//                    public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
+//                        markerImage.setImageDrawable(resource);
+//                        view.setLayoutParams(new ViewGroup.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,
+//                                RelativeLayout.LayoutParams.WRAP_CONTENT));
+//                        view.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+//                                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+//                        view.layout(0, 0, view.getMeasuredWidth(), view.getMeasuredHeight());
+//                        Bitmap bitmap = Bitmap.createBitmap(view.getMeasuredWidth(),
+//                                view.getMeasuredHeight(),
+//                                Bitmap.Config.ARGB_8888);
+//                        Canvas c = new Canvas(bitmap);
+//                        view.draw(c);
+//
+//                        mMap.addMarker(new MarkerOptions().position(customMarker).title("me")
+//                                .icon(BitmapDescriptorFactory.fromBitmap(bitmap)));
+//                    }
+//                });
+
         Glide
                 .with(context)
                 .load(uri)
-                .centerCrop()
-                .diskCacheStrategy(DiskCacheStrategy.SOURCE)
-                .into(new SimpleTarget<GlideDrawable>() {
+                .apply(new RequestOptions()
+                            .centerCrop()
+                            .diskCacheStrategy(DiskCacheStrategy.RESOURCE))
+                .into(new SimpleTarget<Drawable>() {
                     @Override
-                    public void onResourceReady(GlideDrawable resource, GlideAnimation<? super GlideDrawable> glideAnimation) {
+                    public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
                         markerImage.setImageDrawable(resource);
                         view.setLayoutParams(new ViewGroup.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT,
                                 RelativeLayout.LayoutParams.WRAP_CONTENT));

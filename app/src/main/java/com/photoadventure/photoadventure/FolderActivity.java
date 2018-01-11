@@ -4,17 +4,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.FileProvider;
@@ -23,9 +19,9 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.StaggeredGridLayoutManager;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -40,6 +36,7 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.photoadventure.photoadventure.Model.Photo;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
@@ -49,14 +46,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static com.photoadventure.photoadventure.MainActivity.REQUEST_CAMERA_PERMISSION;
-import static com.photoadventure.photoadventure.MainActivity.REQUEST_IMAGE_CAPTURE;
 
 public class FolderActivity extends AppCompatActivity {
 
     private static final String TAG = "FolderActivity";
     private static final String AUTHORITY = "com.example.android.fileprovider";
     private static final String PHOTOSPATH = "Android/data/com.photoadventure.photoadventure/files/Pictures";
+    static final int REQUEST_IMAGE_CAPTURE = 1;
+    static final int REQUEST_CAMERA_PERMISSION = 2;
 
     // Views
     private RecyclerView mPhotoRecyclerView;
@@ -71,13 +68,25 @@ public class FolderActivity extends AppCompatActivity {
 
     // Properties
     private List<Bitmap> mPhotoListBitmap = new ArrayList<>();
-    private ArrayList<Photo> mPhotoList = new ArrayList<>();
+    private ArrayList<Photo> mPhotoList;
     private String mCurrentPhotoPath = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) throws Error {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_folder);
+
+        Log.d(TAG, "onCreate Folder");
+        if (mPhotoList != null) {
+            Log.d(TAG, "mPhotoList: " + mPhotoList.toString());
+        }
+
+        if (mPhotoRecyclerView != null) {
+            Log.d(TAG, "recyclerView: " + mPhotoRecyclerView.getAdapter());
+        }
+
+        mPhotoList = new ArrayList<>();
+        mPhotoList.clear();
 
         // Take Photo Button init
         mTakePhotoButton = findViewById(R.id.take_photo_FloatingButton);
@@ -120,9 +129,12 @@ public class FolderActivity extends AppCompatActivity {
                 }
                 mPhotoList = tempPhotoList;
 
-                mPhotoAdapter = new PhotoAdapter(mPhotoList, FolderActivity.this);
-                mPhotoAdapter.setHasStableIds(true);
-                mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+                if (mPhotoAdapter == null) {
+                    Log.d(TAG, "mPhotoList in Listener: " + mPhotoList.toString());
+                    mPhotoAdapter = new PhotoAdapter(mPhotoList, FolderActivity.this);
+                    mPhotoAdapter.setHasStableIds(true);
+                    mPhotoRecyclerView.setAdapter(mPhotoAdapter);
+                }
             }
 
             @Override
@@ -138,8 +150,8 @@ public class FolderActivity extends AppCompatActivity {
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 mPhotoList.add(dataSnapshot.getValue(Photo.class));
                 if (mPhotoAdapter != null) {
-//                    mPhotoAdapter.notifyDataSetChanged();
                     mPhotoAdapter.notifyItemInserted(mPhotoList.size() - 1);
+//                    mPhotoAdapter.notifyDataSetChanged();
                 }
             }
 
@@ -164,8 +176,29 @@ public class FolderActivity extends AppCompatActivity {
             }
         };
         mPhotosDatabaseRef.addChildEventListener(addNewPhotoListener);
-        Log.d(TAG, "Photo List onCreate: " + mPhotoListBitmap.toString());
+//        Log.d(TAG, "Photo List onCreate: " + mPhotoListBitmap.toString());
 
+        if (mPhotoAdapter != null) {
+            mPhotoAdapter.notifyDataSetChanged();
+        }
+
+        //Navigation bottom
+        BottomNavigationView navigationView = findViewById(R.id.bottom_navigation);
+        navigationView.setSelectedItemId(R.id.navigation_home);
+        navigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+        @Override
+        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.navigation_home:
+                    break;
+                case R.id.navigation_map:
+                    Intent intent1 = new Intent(FolderActivity.this, MapsActivity.class);
+                    startActivity(intent1);
+                    break;
+            }
+            return false;
+        }
+    });
 
     }
 
@@ -306,7 +339,7 @@ public class FolderActivity extends AppCompatActivity {
 
         @Override
         public void onClick(View v) {
-//            Toast.makeText(v.getContext(), "Clicked position: " + getPosition(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(v.getContext(), "Clicked position: " + getPosition(), Toast.LENGTH_SHORT).show();
             
         }
     }
@@ -342,4 +375,6 @@ public class FolderActivity extends AppCompatActivity {
             return mPhotoList.size();
         }
     }
+
+
 }

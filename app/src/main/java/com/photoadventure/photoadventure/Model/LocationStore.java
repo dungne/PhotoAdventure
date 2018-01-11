@@ -1,4 +1,4 @@
-package com.photoadventure.photoadventure;
+package com.photoadventure.photoadventure.Model;
 
 /**
  * Created by 전소연 on 1/6/2018.
