@@ -131,6 +131,7 @@ public class FolderActivity extends AppCompatActivity {
 
                 if (mPhotoAdapter == null) {
                     Log.d(TAG, "mPhotoList in Listener: " + mPhotoList.toString());
+                    Log.d(TAG, "mPhotoList size: " + mPhotoList.size());
                     mPhotoAdapter = new PhotoAdapter(mPhotoList, FolderActivity.this);
                     mPhotoAdapter.setHasStableIds(true);
                     mPhotoRecyclerView.setAdapter(mPhotoAdapter);
